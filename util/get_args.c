@@ -1,4 +1,4 @@
-#include "assignment1.h"
+#include "assignment3.h"
 
 
 int get_args( int argc, char **argv, int *nrepeats, int *first, 

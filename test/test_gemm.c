@@ -1,8 +1,7 @@
-#include "assignment1.h"
+#include "assignment3.h"
 
 int test_gemm( int nrepeats, int first, int last, int inc)
 {
-
 	int size, irep;
 	int m, n, k;
 	int csA, csB, csC;
@@ -12,7 +11,6 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 
 	double done = 1.0;
 
-
 	double t_ref = DBL_MAX;
 	double t     = DBL_MAX;
 	double t_start; 
@@ -21,13 +19,13 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 
 	double diff, maxdiff = 0.0;
 
-	printf( "%% --------- DGEMM --------- \n"); 
+	printf( "%% --------- DGEMM --------- \n");
 	printf( "data_dgemm" );
-	printf( "( %4lu, 1:6 ) = [ %5lu %5lu %5lu %8.2f %8.2f %15.4e ];\n",
+	printf( "( %4lu, 1:6 ) = [ %5lu %5lu %5lu %8.2f %8.2f %8.2f %15.4e ];\n",
 						 ( unsigned long )( last - first)/inc + 1,
 	        			 ( unsigned long )0,
 	        			 ( unsigned long )0,
-	        			 ( unsigned long )0, 0.0, 0.0, 0.0 );
+	        			 ( unsigned long )0, 0.0, 0.0, 0.0, 0.0 );
 	for ( size=last; size>= first; size-=inc )
 	{
     	/* we will only time cases where all three matrices are square */
@@ -82,16 +80,16 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 		}
 
 		gflops = 2 * m * n * k / ( t * 1.0e9 );
-		
+
 		diff    = shpc_maxabsdiff( m, n, C, rsC, csC, Cref, rsC, csC );
         maxdiff = max ( diff, maxdiff );
 
 		printf( "data_dgemm");
-		printf( "( %4lu, 1:6 ) = [ %5lu %5lu %5lu %8.2f %8.2f %15.4e ];\n",
+		printf( "( %4lu, 1:6 ) = [ %5lu %5lu %5lu %8.2f %8.2f %8.2f %15.4e ];\n",
 		        ( unsigned long )(size - first)/inc + 1,
 		        ( unsigned long )m,
 		        ( unsigned long )k,
-		        ( unsigned long )n, gflops_ref, gflops, diff );
+		        ( unsigned long )n, gflops_ref, gflops, gflops/gflops_ref, diff );
 
 
 
@@ -102,7 +100,6 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 		free( Cref );
 
 	}
-
 
 }
 
