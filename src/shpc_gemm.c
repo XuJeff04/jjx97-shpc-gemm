@@ -12,9 +12,8 @@
 #define _KC 256
 #define _MC 96
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) / alignment * alignment)
+#define THREAD_COUNT 8
 
-static void padMat(double* newMat, double* oldMat, int m, int n, int rsC, int csC);
-static void unpadMat(double* newMat, double* oldMat, int m, int n, int rsC, int csC);
 double Bpacked[_KC * _NC] __attribute__((aligned(4096)));
 
 
@@ -23,15 +22,8 @@ void shpc_dgemm( int m, int n, int k,
                     double *B, int rsB, int csB,                                
                     double *C, int rsC, int csC )
 {
-    double* newC;
-    if (posix_memalign((void**)&newC, 4096, ALIGN(m, _MR) * ALIGN(n, _NR) * sizeof(double))) {
-        return;
-    }
-    memset(newC, 0, ALIGN(m, _MR) * ALIGN(n, _NR) * sizeof(double));
-    padMat(newC, C, m, n, rsC, csC);
-    unsigned newCsC = ALIGN(m, _MR);
     for (int j = 0; j < n; j+=_NC) {
-        double* Cj = newC+(newCsC * j);
+        double* Cj = C+(csC * j);
         double* Bj = B+(csB * j);
         for (int p = 0; p < k; p += _KC) {
             //pack loops:
@@ -47,10 +39,11 @@ void shpc_dgemm( int m, int n, int k,
                 }
             }
             //next loop:
-            #pragma omp parallel for
+            #pragma omp parallel for num_threads(THREAD_COUNT)
             for (int i = 0; i < m; i+=_MC) {
                 //pack loops:
                 double Apacked[_MC * _KC] __attribute__((aligned(4096)));
+                double* padC = calloc(_NR *_MR, sizeof(double));
                 for (int j_pack = 0; j_pack < _KC; j_pack++) {
                     for (int i_pack = 0; i_pack < _MC; i_pack+=_MR) {
                         for (int _i_pack = 0; _i_pack < _MR; _i_pack++) {
@@ -65,14 +58,26 @@ void shpc_dgemm( int m, int n, int k,
                 //next loop:
                 for (int _j = 0; _j < _NC && j +_j < ALIGN(n, _NR); _j+=_NR) {
                     for (int _i = 0; _i < _MC && i +_i < ALIGN(m, _MR); _i+=_MR) {
-                        ukernel(&Apacked[_i*_KC], 1, _MR, &Bpacked[_j*_KC], _NR, 1, Cj+(i+_i)+_j*newCsC, 1, newCsC);
+                        //fill in the contents of C
+                        for (int j_pack = 0; j_pack < _NR && j + _j + j_pack < n; j_pack++) {
+                            for (int i_pack = 0; i_pack < _MR && i + _i + i_pack < m; i_pack++) {
+                                *(padC + i_pack + j_pack * _MR) = *(Cj+(i+_i+i_pack)*rsC+(_j+j_pack)*csC);
+                            }
+                        }
+                        //do the uey
+                        ukernel(&Apacked[_i*_KC], 1, _MR, &Bpacked[_j*_KC], _NR, 1, padC, 1, _MR);
+                        //write back the good stuff
+                        for (int j_pack = 0; j_pack < _NR && j + _j + j_pack < n; j_pack++) {
+                            for (int i_pack = 0; i_pack < _MR && i + _i + i_pack < m; i_pack++) {
+                                *(Cj+(i+_i+i_pack)*rsC+(_j+j_pack)*csC) = *(padC + i_pack + j_pack * _MR);
+                            }
+                        }
                     }
                 }
+                free(padC);
             }
         }
     }
-    unpadMat(newC, C, m, n, rsC, csC);
-    free(newC);
 }
 
 void ukernel (double *A, int rsA, int csA, double* B, int rsB, int csB, double* C, int rsC, int csC) {
@@ -139,22 +144,4 @@ void ukernel (double *A, int rsA, int csA, double* B, int rsB, int csB, double* 
     _mm256_storeu_pd( &C[4 * rsC + 4 * csC], gamma_4567_4 );
     _mm256_storeu_pd( &C[4 * rsC + 5 * csC], gamma_4567_5 );
 
-}
-
-static void padMat(double* newMat, double* oldMat, int m, int n, int rsC, int csC) {
-    int newM = ALIGN(m, _MR);
-    for (int j = 0; j < n; j++) {
-        for (int i = 0; i < m; i++) {
-            *(newMat+i+newM*j) = *(oldMat+i*rsC+j*csC);
-        }
-    }
-}
-
-static void unpadMat(double* newMat, double* oldMat, int m, int n, int rsC, int csC) {
-    int newM = ALIGN(m, _MR);
-    for (int j = 0; j < n; j++) {
-        for (int i = 0; i < m; i++) {
-            *(oldMat+i*rsC+j*csC) = *(newMat+i+newM*j);
-        }
-    }
 }

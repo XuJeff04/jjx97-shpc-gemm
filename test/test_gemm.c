@@ -30,15 +30,15 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 	{
     	/* we will only time cases where all three matrices are square */
     	m = n = k = size;
-		csA = m; csB = k; csC = m;
+		csA = 2; csB = 2; csC = 2;
 
-		rsA = rsB = rsC = 1;
+		rsA = 2*m + 9; rsB = 2*k + 9, rsC = 2*m + 9;
 
-    	A = ( double * ) malloc( csA * k * sizeof( double ) );
-    	B = ( double * ) malloc( csB * n * sizeof( double ) );
-    	C = ( double * ) malloc( csC * n * sizeof( double ) );
-    	Cold = ( double * ) malloc( csC * n * sizeof( double ) );
-    	Cref = ( double * ) malloc( csC * n * sizeof( double ) );
+    	A = ( double * ) malloc( rsA * k * sizeof( double ) );
+    	B = ( double * ) malloc( rsB * n * sizeof( double ) );
+    	C = ( double * ) malloc( rsC * n * sizeof( double ) );
+    	Cold = ( double * ) malloc( rsC * n * sizeof( double ) );
+    	Cref = ( double * ) malloc( rsC * n * sizeof( double ) );
 
 
 		bli_drandm( 0, BLIS_DENSE, m, k, A, rsA, csA);
@@ -48,7 +48,7 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 
 		for ( irep=0; irep<nrepeats; irep++ )
 		{
-			memcpy( Cref, Cold, csC * n * sizeof( double ) );
+			memcpy( Cref, Cold, rsC * n * sizeof( double ) );
 
 			t_start = bli_clock();
 		
@@ -66,7 +66,7 @@ int test_gemm( int nrepeats, int first, int last, int inc)
 		 
 		for ( irep=0; irep<nrepeats; irep++ )
 		{
-			memcpy( C, Cold, csC * n * sizeof( double ) );
+			memcpy( C, Cold, rsC * n * sizeof( double ) );
 
 			t_start = bli_clock();
 		
