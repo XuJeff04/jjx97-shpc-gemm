@@ -14,7 +14,7 @@
 #define ALIGN(size, alignment) (((size) + (alignment - 1)) / alignment * alignment)
 #define THREAD_COUNT 8
 
-double Bpacked[_KC * _NC] __attribute__((aligned(4096)));
+double Bpacked[_KC * _NC + _NR] __attribute__((aligned(4096)));
 
 
 void shpc_dgemm( int m, int n, int k,
